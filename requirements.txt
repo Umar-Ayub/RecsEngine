@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+numpy
+python-multipart
+Jinja2
+google-generativeai
+sentence-transformers
+torch
+scikit-learn
+faiss-cpu
+pytest
+httpx
