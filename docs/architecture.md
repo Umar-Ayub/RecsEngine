@@ -17,10 +17,10 @@ The core of the system is a FastAPI application. It is responsible for:
 
 ### 2. Core Components (`src/core/`)
 
-*   **`config.py`**: This file handles configuration management, such as loading the API key and defining constants like the aspiration categories.
+*   **`config.py`**: This file handles configuration management, such as loading the API key.
 *   **`models.py`**: This file contains the Pydantic models (`Post`, `UserConv`).
 *   **`embed.py`**: This file is responsible for embedding text using the `all-MiniLM-L6-v2` sentence-transformer model.
-*   **`aspirations.py`**: This file handles the aspiration extraction logic using the Gemini API. It classifies user messages into predefined aspiration categories.
+*   **`aspirations.py`**: This file handles the aspiration extraction logic using the Gemini API. It classifies user messages into a list of aspirations.
 *   **`indexing.py`**: This file manages the FAISS index, including building the index from the discussion posts and searching for similar items.
 *   **`reranking.py`**: This module contains the logic for reranking and filtering the recommendations. It includes functions to boost posts based on aspiration alignment, penalize duplicates, and incorporate popularity and recency priors from `activity.json`.
 *   **`metrics.py`**: This module contains functions to calculate the metrics we've defined: aspirational alignment and diversity.
@@ -35,7 +35,7 @@ The system uses three data sources:
 
 ### 4. Aspiration Extraction
 
-User aspirations are extracted from conversations using the Gemini API. The system uses a prompt-based approach to classify the user's messages into the aspirational categories defined in `src/core/config.py`.
+User aspirations are extracted from conversations using the Gemini API. The system uses a prompt-based approach to generate a list of relevant tags that represent the user's key themes and aspirations. These tags are then used for semantic search.
 
 ### 5. Recommendation Engine
 

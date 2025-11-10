@@ -31,7 +31,6 @@ MOCK_POST_EMBEDDINGS = [None] * (max(MOCK_POSTS_DATA.keys()) + 1)
 for post_id, embedding in MOCK_EMBEDDINGS_DATA.items():
     MOCK_POST_EMBEDDINGS[post_id] = embedding
 
-@patch('src.core.indexing.POST_EMB', new=MOCK_POST_EMBEDDINGS)
 def test_calculate_aspirational_alignment():
     # Test case 1: Empty recommendations
     assert calculate_aspirational_alignment([], ["independence"]) == 0.0
@@ -40,7 +39,7 @@ def test_calculate_aspirational_alignment():
     recommendations = [{"post_id": 1, "text": "independence"}, {"post_id": 2, "text": "travel"}]
     assert calculate_aspirational_alignment(recommendations, []) == 0.0
 
-    # Test case 3: Some alignment
+    # Test case 3: Some alignment with tags
     recommendations = [
         {"post_id": 1, "text": "This post is about independence."},
         {"post_id": 2, "text": "A guide to financial freedom."},
@@ -50,7 +49,7 @@ def test_calculate_aspirational_alignment():
     # Post 1 aligns with "independence", Post 2 aligns with "freedom"
     assert calculate_aspirational_alignment(recommendations, aspirations) == 2/3
 
-    # Test case 4: No alignment
+    # Test case 4: No alignment with tags
     recommendations = [
         {"post_id": 3, "text": "Travel tips for your next adventure."},
         {"post_id": 4, "text": "Healthy eating habits."},
@@ -58,7 +57,7 @@ def test_calculate_aspirational_alignment():
     aspirations = ["independence", "freedom"]
     assert calculate_aspirational_alignment(recommendations, aspirations) == 0.0
 
-    # Test case 5: Full alignment
+    # Test case 5: Full alignment with tags
     recommendations = [
         {"post_id": 1, "text": "This post is about independence."},
         {"post_id": 2, "text": "A guide to financial freedom."},

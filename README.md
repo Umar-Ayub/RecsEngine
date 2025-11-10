@@ -6,7 +6,7 @@ This project is a Python-based system that uses historical conversations and int
 
 The system is a multi-stage recommendation engine that uses a combination of semantic search and rule-based reranking to provide recommendations.
 
-1.  **Aspiration Modeling**: User aspirations are extracted from conversations using the Gemini API. The system uses a prompt-based approach to classify the user's messages into predefined aspirational categories.
+1.  **Aspiration Modeling**: User aspirations are extracted from conversations using the Gemini API. The system uses a prompt-based approach to generate a list of relevant tags that represent the user's key themes and aspirations.
 
 2.  **Candidate Generation**: The system first generates a set of candidate recommendations by searching a FAISS index for posts with the highest cosine similarity to the user's aspirations.
 

@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from src.main import app
 from src.core.indexing import build_index
 
@@ -11,9 +11,11 @@ def setup_module(module):
     """
     build_index()
 
-@patch('src.core.aspirations.extract_aspirations')
-def test_recommend_with_aspirations(mock_extract_aspirations):
-    mock_extract_aspirations.return_value = ["independence"]
+@patch('src.core.aspirations.generation_model')
+def test_recommend_with_aspirations(mock_generation_model):
+    mock_response = MagicMock()
+    mock_response.text = "independence, self-reliance, personal freedom"
+    mock_generation_model.generate_content.return_value = mock_response
     user_conv = {
         "ref_user_id": 123,
         "messages_list": [
@@ -26,11 +28,14 @@ def test_recommend_with_aspirations(mock_extract_aspirations):
     assert data["ref_user_id"] == 123
     assert "recommendations" in data
     assert "debug" in data
-    assert data["debug"]["top_aspirations"] == ["independence"]
+    # The order of tags might vary, so we check for set equality
+    assert set(data["debug"]["top_aspirations"]) == set(["independence", "self-reliance", "personal freedom"])
 
-@patch('src.core.aspirations.extract_aspirations')
-def test_recommend_without_aspirations(mock_extract_aspirations):
-    mock_extract_aspirations.return_value = ["other"]
+@patch('src.core.aspirations.generation_model')
+def test_recommend_without_aspirations(mock_generation_model):
+    mock_response = MagicMock()
+    mock_response.text = "other"
+    mock_generation_model.generate_content.return_value = mock_response
     user_conv = {
         "ref_user_id": 123,
         "messages_list": [

@@ -14,6 +14,7 @@ from .core.indexing import (
 )
 from .core.reranking import rerank_and_filter, load_activity_data, calculate_popularity
 from .core.metrics import calculate_aspirational_alignment, calculate_diversity
+from .core.config import GOOGLE_API_KEY
 
 app = FastAPI()
 
