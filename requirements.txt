@@ -11,4 +11,6 @@ faiss-cpu
 pytest
 httpx
 transformers
+streamlit
+requests
 
