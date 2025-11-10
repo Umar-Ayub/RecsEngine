@@ -9,4 +9,6 @@ torch
 scikit-learn
 faiss-cpu
 pytest
-httpx
+httpxtransformers
+torch
+nvtabular
