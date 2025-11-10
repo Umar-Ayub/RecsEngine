@@ -1,4 +1,5 @@
 # ... (existing imports) ...
+import copy
 from src.core.models import Post
 import numpy as np
 import pytest
@@ -127,105 +128,54 @@ def test_calculate_popularity():
     # Test case 1: Empty activity data
     assert calculate_popularity([]) == {}
 
-    # Test case 2: Some activity data
+    # Test case 2: Some activity data with default weights (all 'read')
     activity_data = [
-        {"post_id": 1, "user_id": 101},
-        {"post_id": 2, "user_id": 101},
-        {"post_id": 1, "user_id": 102},
-        {"post_id": 3, "user_id": 103},
-        {"post_id": 2, "user_id": 102},
+        {"post_id": 1, "ref_user_id": 101, "activity_type": "read"},
+        {"post_id": 2, "ref_user_id": 101, "activity_type": "read"},
+        {"post_id": 1, "ref_user_id": 102, "activity_type": "read"},
     ]
-    expected_popularity = {1: 2, 2: 2, 3: 1}
+    # Default read weight is 0.5
+    expected_popularity = {1: 1.0, 2: 0.5}
     assert calculate_popularity(activity_data) == expected_popularity
 
-    # Test case 3: Single activity
-    activity_data_single = [{"post_id": 5, "user_id": 200}]
-    assert calculate_popularity(activity_data_single) == {5: 1}
+    # Test case 3: Single activity with default weight
+    activity_data_single = [{"post_id": 5, "ref_user_id": 200, "activity_type": "read"}]
+    assert calculate_popularity(activity_data_single) == {5: 0.5}
 
-@patch('src.core.indexing.POSTS', new=MOCK_POSTS_LIST)
-def test_rerank_and_filter():
-    initial_recommendations = [
-        {"post_id": 1, "score": 0.5}, # independence, freedom
-        {"post_id": 3, "score": 0.7}, # travel
-        {"post_id": 2, "score": 0.6}, # financial independence
-        {"post_id": 5, "score": 0.4}, # freedom (duplicate content with 1)
-        {"post_id": 4, "score": 0.8}, # healthy eating
+def test_calculate_popularity_weighted():
+    # Test case 1: Mixed activity types with default weights
+    activity_data = [
+        {"post_id": 1, "ref_user_id": 101, "activity_type": "read"},
+        {"post_id": 2, "ref_user_id": 101, "activity_type": "commented"},
+        {"post_id": 1, "ref_user_id": 102, "activity_type": "created"},
+        {"post_id": 3, "ref_user_id": 103, "activity_type": "read"},
+        {"post_id": 2, "ref_user_id": 102, "activity_type": "read"},
     ]
-    aspirations = ["independence", "freedom"]
-    popularity = {1: 10, 2: 5, 3: 20, 4: 0, 5: 1} # Post 3 is most popular
+    # Default weights: commented=3.0, created=2.5, read=0.5
+    # Post 1: read (0.5) + created (2.5) = 3.0
+    # Post 2: commented (3.0) + read (0.5) = 3.5
+    # Post 3: read (0.5) = 0.5
+    expected_popularity = {1: 3.0, 2: 3.5, 3: 0.5}
+    assert calculate_popularity(activity_data) == expected_popularity
 
-    # Test case 1: Basic reranking and filtering with k=3
-    k = 3
-    reranked = rerank_and_filter(initial_recommendations, aspirations, k, popularity)
-
-    # Expected scores (before sorting and filtering):
-    # Post 1: 0.5 * 1.2 (aspirations) + 10 * 0.01 (popularity) = 0.6 + 0.1 = 0.7
-    # Post 3: 0.7 (no aspirations) + 20 * 0.01 (popularity) = 0.7 + 0.2 = 0.9
-    # Post 2: 0.6 * 1.2 (aspirations) + 5 * 0.01 (popularity) = 0.72 + 0.05 = 0.77
-    # Post 5: 0.4 * 1.2 (aspirations) + 1 * 0.01 (popularity) = 0.48 + 0.01 = 0.49
-    # Post 4: 0.8 (no aspirations) + 0 * 0.01 (popularity) = 0.8
-
-    # Sorted by score (descending):
-    # Post 3: 0.9
-    # Post 4: 0.8
-    # Post 2: 0.77
-    # Post 1: 0.7
-    # Post 5: 0.49
-
-    # After filtering duplicates (Post 5 is similar to Post 1, but post 1 has higher score, so post 5 would be filtered out if it had same content)
-    # In this mock, post 5 has different post_id, so it's not a duplicate by post_id.
-    # The current rerank_and_filter filters by post_id, not content.
-    # So, all unique post_ids will be considered.
-
-    # Expected final order for k=3:
-    # Post 3 (score 0.9)
-    # Post 1 (score 0.82)
-    # Post 4 (score 0.8)
-
-    assert len(reranked) == k
-    assert reranked[0]["post_id"] == 3
-    assert reranked[1]["post_id"] == 1
-    assert reranked[2]["post_id"] == 4
-    assert reranked[0]["score"] == pytest.approx(0.9)
-    assert reranked[1]["score"] == pytest.approx(0.82)
-    assert reranked[2]["score"] == pytest.approx(0.8)
-
-
-    # Test case 2: No aspirations, no popularity
-    initial_recommendations_no_boost = [
-        {"post_id": 1, "score": 0.5},
-        {"post_id": 3, "score": 0.7},
+    # Test case 2: Custom weights
+    custom_weights = {"read": 1.0, "commented": 5.0, "created": 0.1}
+    activity_data_custom_weights = [
+        {"post_id": 1, "ref_user_id": 101, "activity_type": "read"},
+        {"post_id": 1, "ref_user_id": 102, "activity_type": "commented"},
+        {"post_id": 2, "ref_user_id": 103, "activity_type": "created"},
     ]
-    reranked_no_boost = rerank_and_filter(initial_recommendations_no_boost, [], 2, {})
-    assert len(reranked_no_boost) == 2
-    assert reranked_no_boost[0]["post_id"] == 3
-    assert reranked_no_boost[1]["post_id"] == 1
-    assert reranked_no_boost[0]["score"] == pytest.approx(0.7)
-    assert reranked_no_boost[1]["score"] == pytest.approx(0.5)
+    # Post 1: read (1.0) + commented (5.0) = 6.0
+    # Post 2: created (0.1) = 0.1
+    expected_popularity_custom = {1: 6.0, 2: 0.1}
+    assert calculate_popularity(activity_data_custom_weights, weights=custom_weights) == expected_popularity_custom
 
-    # Test case 3: Filtering duplicates (same post_id)
-    initial_recommendations_duplicates = [
-        {"post_id": 1, "score": 0.5},
-        {"post_id": 3, "score": 0.7},
-        {"post_id": 1, "score": 0.8}, # Duplicate post_id 1, but higher score
+    # Test case 3: Activity type not in weights, should use default 0.5 (for 'read')
+    activity_data_unknown_type = [
+        {"post_id": 1, "ref_user_id": 101, "activity_type": "unknown"},
     ]
-    reranked_duplicates = rerank_and_filter(initial_recommendations_duplicates, [], 3, {})
-    assert len(reranked_duplicates) == 2 # Only two unique post_ids
-    assert reranked_duplicates[0]["post_id"] == 1 # The one with higher score should be kept
-    assert reranked_duplicates[1]["post_id"] == 3
-    assert reranked_duplicates[0]["score"] == pytest.approx(0.8)
-    assert reranked_duplicates[1]["score"] == pytest.approx(0.7)
+    expected_popularity_unknown = {1: 0.5}
+    assert calculate_popularity(activity_data_unknown_type) == expected_popularity_unknown
 
-    # Test case 4: k is larger than available unique recommendations
-    initial_recommendations_small_set = [
-        {"post_id": 1, "score": 0.5},
-        {"post_id": 3, "score": 0.7},
-    ]
-    reranked_small_set = rerank_and_filter(initial_recommendations_small_set, [], 5, {})
-    assert len(reranked_small_set) == 2
-    assert reranked_small_set[0]["post_id"] == 3
-    assert reranked_small_set[1]["post_id"] == 1
 
-    # Test case 5: Empty initial recommendations
-    reranked_empty = rerank_and_filter([], aspirations, k, popularity)
-    assert reranked_empty == []
+

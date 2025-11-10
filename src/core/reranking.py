@@ -13,39 +13,48 @@ def load_activity_data():
     except FileNotFoundError:
         return []
 
-def calculate_popularity(activity_data: List[Dict]) -> Dict[int, int]:
+def calculate_popularity(
+    activity_data: List[Dict],
+    weights: Dict[str, float] = None
+) -> Dict[int, float]:
     """
-    Calculate the popularity of each post based on the number of interactions.
+    Calculate the weighted popularity of each post based on different types of interactions.
     """
+    if weights is None:
+        weights = {
+            "commented": 3.0,
+            "created": 2.5,
+            "read": 0.5,
+        }
+
     popularity = {}
     for activity in activity_data:
         post_id = activity["post_id"]
-        popularity[post_id] = popularity.get(post_id, 0) + 1
+        activity_type = activity.get("activity_type", "read")  # Default to 'read' if type is not specified
+        popularity[post_id] = popularity.get(post_id, 0.0) + weights.get(activity_type, 0.5)
     return popularity
 
 def rerank_and_filter(
     recommendations: List[Dict],
     aspirations: List[str],
     k: int,
-    popularity: Dict[int, int],
+    popularity: Dict[int, float],
 ) -> List[Dict]:
     """
     Rerank and filter the recommendations.
     """
     # Boost posts that align with the user's aspirations
     for rec in recommendations:
-        post_index = get_post_index_by_id(rec["post_id"])
-        post = get_post_by_index(post_index)
         for aspiration in aspirations:
-            if aspiration in post.text.lower():
+            if aspiration in rec["text"].lower():
                 rec["score"] *= 1.2  # Boost score by 20%
 
     # Add popularity boost
     for rec in recommendations:
         rec["score"] += popularity.get(rec["post_id"], 0) * 0.01
 
-    # Sort by score
-    recommendations.sort(key=lambda x: x["score"], reverse=True)
+    # Sort by score and post_id (as a tie-breaker)
+    recommendations.sort(key=lambda x: (x["score"], x["post_id"]), reverse=True)
 
     # Penalize duplicates and filter
     final_recommendations = []
